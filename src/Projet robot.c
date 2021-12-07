@@ -22,6 +22,13 @@
 #include "dac.h"
 #include "lib_ENS_II1_lcd.h"
 
+#define TRIG LPC_GPIO_PORT->B0[17]
+#define ECHO LPC_GPIO_PORT->B0[16]
+#define M1SR LPC_GPIO_PORT->B0[14]
+#define M1PWM LPC_GPIO_PORT->B0[15]
+#define M2SR LPC_GPIO_PORT->B0[18]
+#define M2PWM LPC_GPIO_PORT->B0[20]
+
 int main(void) {
 
 	//Activation du périphérique d'entrées/sorties TOR
