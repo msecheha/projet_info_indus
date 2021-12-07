@@ -40,23 +40,17 @@ int main(void) {
 	// Configuration de l'horloge a sa frequence maximale
 	LPC_PWRD_API->set_fro_frequency(30000);
 
+	// PWM envoyant les impulsions pour les salves d'ultrasons
 	LPC_CTIMER0->PR = 14;	// TC s'incremente toutes les microsecondes
+	LPC_CTIMER0->MR[3] = 60000; // Le signal est periodique de 60 ms
+	LPC_CTIMER0->MR[1] = 59990; // Il est a zero pendant 59,99 ms
+	LPC_CTIMER0->PWMC |= (1 << 1); // La sortie MAT1 est en mode PWM
+	LPC_CTIMER0->MCR |= (1 << 10); // Reset TC a chaque match avec MR [3]
+	LPC_CTIMER0->EMR |= (3 << 4);
+	LPC_SWM->PINASSIGN4 &= ~(0xFF00);
+	LPC_SWM->PINASSIGN4 |= (17 << 8);
 
 	return 0;
 
-}
-
-void impulsion_capteur()
-	// Fonction qui genere l'impulsion de 10 microsecondes
-	// necessaire pour lancer la salve d'ultrasons
-	{
-	LPC_CTIMER0->TCR = (1 << CEN);
-	while (LPC_CTIMER0->TC < 10) {
-		LPC_GPIO_PORT->PIN0 = (1 << 17);
-		// On genere une impulsion de 10 microsecondes
-	}
-	LPC_GPIO_PORT->NOT0 = (1 << 17);
-	LPC_CTIMER0->TCR = (0 << CEN);
-	// On pense a desactiver le compteur apres
 }
 
