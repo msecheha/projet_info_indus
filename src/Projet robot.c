@@ -21,6 +21,7 @@
 #include "core_cm0plus.h"
 #include "dac.h"
 #include "lib_ENS_II1_lcd.h"
+#include "mrt.h"
 
 #define TRIG LPC_GPIO_PORT->B0[17]
 #define ECHO LPC_GPIO_PORT->B0[16]
@@ -29,10 +30,36 @@
 #define M2SR LPC_GPIO_PORT->B0[18]
 #define M2PWM LPC_GPIO_PORT->B0[20]
 
+#define borne_mrt0_bas 60000
+#define borne_mrt0_haut 60010
+
+uint32_t compteur_mrt0=0;
+
+void MRT_IRQHandler(void){
+	if ((LPC_MRT->Channel[0].STAT & 1) == 1){ //Interruption due au MRT0
+		if (TRIG == 0 && compteur_mrt0 < borne_mrt0_bas){
+			compteur_mrt0++;
+		}
+		else if (TRIG == 0 && compteur_mrt0 >= borne_mrt0_bas){
+			compteur_mrt0++;
+			TRIG=1;
+		}
+		else if (TRIG == 1 && compteur_mrt0 < borne_mrt0_haut){
+			compteur_mrt0++;
+		}
+		else if (TRIG == 1 && compteur_mrt0 >= borne_mrt0_haut){
+			compteur_mrt0=0;
+			TRIG=0;
+		}
+		LPC_MRT->Channel[0].STAT |= 1; //On pense a abaisser le drapeau d'interruption
+	}
+}
+
+
 int main(void) {
 
 	//Activation du périphérique d'entrées/sorties TOR
-	LPC_SYSCON->SYSAHBCLKCTRL0 |= GPIO | CTIMER0 | SWM;
+	LPC_SYSCON->SYSAHBCLKCTRL0 |= GPIO | CTIMER0 | SWM | GPIO_INT | MRT;
 
 	//Configuration en sortie des broches P0_11, 17, 19 et 21
 	LPC_GPIO_PORT->DIR0 |= (1 << 17) | (1 << 14) | (1 << 18) | (1 << 20);
@@ -41,15 +68,26 @@ int main(void) {
 	LPC_PWRD_API->set_fro_frequency(30000);
 
 	// PWM envoyant les impulsions pour les salves d'ultrasons
-	LPC_CTIMER0->PR = 14;	// TC s'incremente toutes les microsecondes
-	LPC_CTIMER0->MR[3] = 60000; // Le signal est periodique de 60 ms
-	LPC_CTIMER0->MR[1] = 59990; // Il est a zero pendant 59,99 ms
-	LPC_CTIMER0->PWMC |= (1 << 1); // La sortie MAT1 est en mode PWM
-	LPC_CTIMER0->MCR |= (1 << 10); // Reset TC a chaque match avec MR [3]
-	LPC_CTIMER0->EMR |= (3 << 4);
-	LPC_SWM->PINASSIGN4 &= ~(0xFF00);
-	LPC_SWM->PINASSIGN4 |= (17 << 8);
+	LPC_MRT->Channel[0].CTRL |= (1<<0); //Active l'interruption du MRT0
+	LPC_MRT->Channel[0].CTRL |= (0<<1); //Active le mode a interruptions repetees
 
+	NVIC_EnableIRQ(MRT_IRQn);  //Active les interruptions du MRT
+
+	LPC_MRT->Channel[0].INTVAL = 15; //La valeur du timer du MRT0 diminue chaque microseconde
+
+
+
+	// Configuration de la capture de la duree de l'onde recue
+	LPC_CTIMER0->TCR = (1 << CEN);
+	LPC_SWM->PINASSIGN3 &= ~(0xFF00);
+	LPC_SWM->PINASSIGN3 |= (16 << 8);	// Le capture se fait vis à vis du BP1
+	LPC_CTIMER0->CTCR |= (1 << ENCC) | (1 << SELCC); // Remise à zéro du timer lors d'un front montant
+	LPC_CTIMER0->CCR |= (1 << 0); // On capture sur front montant
+
+
+	while(1){
+
+	}
 	return 0;
 
 }
