@@ -55,6 +55,16 @@ void MRT_IRQHandler(void){
 	}
 }
 
+void CTIMER0_IRQHandler(void) {
+	int delta_t = 0;
+	int distance = 0;
+	char temps[32];
+	delta_t = LPC_CTIMER0->CR[0] / 15000000;
+	distance = (delta_t*34000)/2;
+	sprintf(temps, "Distance :  %d cm", distance);
+	lcd_puts(temps);
+	lcd_gohome();
+	LPC_CTIMER0->IR |= (1 << 4);
 
 int main(void) {
 
@@ -81,9 +91,9 @@ int main(void) {
 	LPC_CTIMER0->TCR = (1 << CEN);
 	LPC_SWM->PINASSIGN3 &= ~(0xFF00);
 	LPC_SWM->PINASSIGN3 |= (16 << 8);	// Le capture se fait vis à vis du BP1
-	LPC_CTIMER0->CTCR |= (1 << ENCC) | (1 << SELCC); // Remise à zéro du timer lors d'un front montant
-	LPC_CTIMER0->CCR |= (1 << 0); // On capture sur front montant
-
+	LPC_CTIMER0->CTCR |= (1 << ENCC) | (0 << SELCC); // Remise à zéro du timer lors d'un front montant
+	LPC_CTIMER0->CCR |= (0b011 << 0); // On capture sur front montant
+	NVIC_EnableIRQ(CTIMER0_IRQn);
 
 	while(1){
 
